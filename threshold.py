@@ -1,16 +1,14 @@
 from PIL import Image
-from skimage import io
-io.use_plugin('pil')
-io.use_plugin('matplotlib')
-from skimage import filters
+import cv2
 import matplotlib.pyplot as plt
 import numpy
 
-def bw_convert(filepath):
-    # Given a color image, converts to black and white and saves.
-    img = Image.open(filepath)
-    bw_img = img.convert("L", dither=None)
-    bw_img.save(filepath + "_bw.png", "PNG")
-
-#bw_convert("/Users/Toz/code/image_parse/Screenshots/UtsuboScreen.png")
+def threshold(filepath):
+    img = cv2.imread(filepath, 0)
+    ret, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    #plt.imshow(cv2.cvtColor(thresh, cv2.COLOR_BGR2RGB))
+    #plt.show()
+    cv2.imwrite('utsubo_bw.png', thresh)
+    
+threshold("/Users/Toz/code/image_parse/Screenshots/UtsuboScreen.png")
 
