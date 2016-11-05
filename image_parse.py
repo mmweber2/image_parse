@@ -25,6 +25,26 @@ def find_blank_horizontal_ranges(pixels, size):
             blanks.append(line)
     return blanks
 
+# TODO: Find a better way to pass the blanks
+def crop_border(image, vert_blanks, horiz_blanks):
+    """Returns a copy of an image with its blank borders removed."""
+    if not (vert_blanks or horiz_blanks):
+        return image.copy()
+    border = [] # Left, upper, right, lower
+    for section in vert_blanks + horiz_blanks:
+        if section[0] == 0:
+            border.append(section[1])
+        elif section[1] == image.size[1]:
+            border.append(section[0])
+    # Since we processed the vertical blanks first, our order will be
+    #     upper, lower, left, right.
+    # PIL's crop requires a tuple of (left, upper, right, lower).
+    box = (border[2], border[0], border[3], border[1])
+    cropped = image.crop(box)
+    # Call load to ensure original image is left intact
+    cropped.load()
+    return cropped
+
 # Size is only in the relevant dimension
 def get_split_ranges(blanks, size):
     """Given locations of blank pixels, finds their boundaries."""
@@ -32,7 +52,6 @@ def get_split_ranges(blanks, size):
     if not blanks:
         return []
     ranges = []
-    print blanks
     start = blanks[0]
     end = blanks[0]
     for loc in blanks[1:]:
@@ -52,4 +71,4 @@ def get_split_ranges(blanks, size):
 
 img = Image.open("kizoku_bw.png")
 blanks = find_blank_horizontal_ranges(numpy.asarray(img), img.size)
-get_split_ranges(blanks, img.size[1])
+print get_split_ranges(blanks, img.size[1])
