@@ -17,22 +17,28 @@ def threshold(filepath):
         thresh = cv2.bitwise_not(thresh)
     return thresh
 
-def find_blank_ranges(pixels, size, dimension):
-    """Identifies ranges (splits) of blank (255) pixels."""
-    if dimension == "x":
-        # Find horizontal blanks
-        dim1, dim2 = y, x
-    elif dimension == "y":
-        # Find vertical blanks
-        dim1, dim2 = x, y
-    else:
-        raise ValueError("dimension must be one of strings 'x', 'y'")
+# TODO: Find a way to combine these two functions
+def find_vert_ranges(pixels, size):
+    """Identifies vertical ranges (splits) of blank (255) pixels."""
     x, y = size
     blanks = []
-    for line in xrange(dim1):
-        for pixel in xrange(dim2):
+    for line in xrange(y):
+        for pixel in xrange(x):
             if pixels[line][pixel] != 255:
-            # Found non-background pixel
+            # Found non-background pixel; row/column is not blank
+                break
+        else:
+            blanks.append(line)
+    return blanks
+
+def find_horiz_ranges(pixels, size):
+    """Identifies horizontal ranges (splits) of blank (255) pixels."""
+    x, y = size
+    blanks = []
+    for line in xrange(x):
+        for pixel in xrange(y):
+            if pixels[pixel][line] != 255:
+            # Found non-background pixel; row/column is not blank
                 break
         else:
             blanks.append(line)
@@ -44,10 +50,15 @@ def crop_border(image, vert_blanks, horiz_blanks):
     if not (vert_blanks or horiz_blanks):
         return image.copy()
     border = [] # Left, upper, right, lower
-    for section in vert_blanks + horiz_blanks:
+    for section in vert_blanks:
         if section[0] == 0:
             border.append(section[1])
-        elif section[1] == image.size[1]:
+        elif section[1] == image.size[1] - 1:
+            border.append(section[0])
+    for section in horiz_blanks:
+        if section[0] == 0:
+            border.append(section[1])
+        elif section[1] == image.size[0] - 1:
             border.append(section[0])
     # Since we processed the vertical blanks first, our order will be
     #     upper, lower, left, right.
@@ -80,5 +91,9 @@ def get_split_ranges(blanks, size):
     return ranges
 
 img = Image.open("kizoku_bw.png")
-h_blanks = find_blank_ranges(numpy.asarray(img), img.size)
-print get_split_ranges(h_blanks, img.size[1])
+h_blanks = find_horiz_ranges(numpy.asarray(img), img.size)
+v_blanks = find_vert_ranges(numpy.asarray(img), img.size)
+h_ranges = get_split_ranges(h_blanks, img.size[1])
+v_ranges = get_split_ranges(v_blanks, img.size[0])
+cropped = crop_border(img, v_ranges, h_ranges)
+cropped.show()
