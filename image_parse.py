@@ -17,29 +17,27 @@ def threshold(filepath):
         thresh = cv2.bitwise_not(thresh)
     return thresh
 
-# TODO: Find a way to combine these two functions
-def find_vert_ranges(pixels, size):
-    """Identifies vertical ranges (splits) of blank (255) pixels."""
-    x, y = size
+def find_ranges(pixels, size, dimension):
+    """Identifies ranges (splits) of blank (255) pixels."""
+    # If dimension is y, looks for empty rows (splits on y axis).
+    # If dimension is x, looks for empty columns (splits on x axis).
+    if dimension == "x":
+        dim1, dim2 = size
+    elif dimension == "y":
+        dim2, dim1 = size
+    else:
+        raise ValueError("dimension must be one of strings x, y")
     blanks = []
-    for line in xrange(y):
-        for pixel in xrange(x):
-            if pixels[line][pixel] != 255:
-            # Found non-background pixel; row/column is not blank
-                break
-        else:
-            blanks.append(line)
-    return blanks
-
-def find_horiz_ranges(pixels, size):
-    """Identifies horizontal ranges (splits) of blank (255) pixels."""
-    x, y = size
-    blanks = []
-    for line in xrange(x):
-        for pixel in xrange(y):
-            if pixels[pixel][line] != 255:
-            # Found non-background pixel; row/column is not blank
-                break
+    for line in xrange(dim1):
+        for pixel in xrange(dim2):
+            if dimension == "y":
+                if pixels[line][pixel] != 255:
+                    # Found non-background pixel; row is not blank
+                    break
+            elif dimension == "x":
+                if pixels[pixel][line] != 255:
+                    # Found non-background pixel; column is not blank
+                    break
         else:
             blanks.append(line)
     return blanks
@@ -49,7 +47,8 @@ def crop_border(image, vert_blanks, horiz_blanks):
     """Returns a copy of an image with its blank borders removed."""
     if not (vert_blanks or horiz_blanks):
         return image.copy()
-    border = [] # Left, upper, right, lower
+    border = []
+    # Check for top, bottom, left, and right borders
     for section in vert_blanks:
         if section[0] == 0:
             border.append(section[1])
@@ -68,6 +67,18 @@ def crop_border(image, vert_blanks, horiz_blanks):
     # Call load to ensure original image is left intact
     cropped.load()
     return cropped
+
+# TODO: Find a better way to get the blanks than passing them around.
+#        Maybe make a class for the image and store these values as attributes.
+def find_character_size(pixels, vert_blanks, horiz_blanks):
+    """Given a cropped image array, returns the estimated character size."""
+    if pixels[0][0] == 255:
+        raise ValueError(
+                "Image must be border cropped before checking character size")
+    # Look for the first vertical and horizontal line that meet from 0, 0
+    # TODO: Get the line breaks and return (x, y) of their lower right corner
+
+
 
 # Size is only in the relevant dimension
 def get_split_ranges(blanks, size):
@@ -91,9 +102,9 @@ def get_split_ranges(blanks, size):
     return ranges
 
 img = Image.open("kizoku_bw.png")
-h_blanks = find_horiz_ranges(numpy.asarray(img), img.size)
-v_blanks = find_vert_ranges(numpy.asarray(img), img.size)
-h_ranges = get_split_ranges(h_blanks, img.size[1])
-v_ranges = get_split_ranges(v_blanks, img.size[0])
-cropped = crop_border(img, v_ranges, h_ranges)
+empty_rows = find_ranges(numpy.asarray(img), img.size, "y")
+empty_cols = find_ranges(numpy.asarray(img), img.size, "x")
+blank_y_ranges = get_split_ranges(empty_rows, img.size[1])
+blank_x_ranges = get_split_ranges(empty_cols, img.size[0])
+cropped = crop_border(img, blank_y_ranges, blank_x_ranges)
 cropped.show()
