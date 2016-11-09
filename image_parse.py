@@ -7,69 +7,88 @@ import numpy
 #     This should be made more efficient.
 # TODO: Error checking
 
-def threshold(filepath):
-    """Converts an image to black on white."""
-    img = cv2.imread(filepath, 0)
-    ret, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    # First pixel is very likely to be the background color
-    if thresh[0][0] < ret:
-        # If background is darker than foreground, invert black/white
-        thresh = cv2.bitwise_not(thresh)
-    return thresh
+class TextImage(object):
+    """Represents an image containing text characters."""
+    image = None
+    empty_rows = None
+    empty_cols = None
+    height = None
+    width = None
 
-def find_ranges(pixels, size, dimension):
-    """Identifies ranges (splits) of blank (255) pixels."""
-    # If dimension is y, looks for empty rows (splits on y axis).
-    # If dimension is x, looks for empty columns (splits on x axis).
-    if dimension == "x":
-        dim1, dim2 = size
-    elif dimension == "y":
-        dim2, dim1 = size
-    else:
-        raise ValueError("dimension must be one of strings x, y")
-    blanks = []
-    for line in xrange(dim1):
-        for pixel in xrange(dim2):
-            if dimension == "y":
-                if pixels[line][pixel] != 255:
+    def __init__(self, filepath):
+        """Reads in an image as black and white."""
+        self.image = cv2.imread(filepath, 0)
+        # Empty rows/columns are not yet identified
+        self.empty_rows = []
+        self.empty_cols = []
+        # shape is in the format (height, width, color_channels)
+        self.height = self.image.shape[0]
+        self.width = self.image.shape[1]
+
+    def threshold(self):
+        """Converts image to black on white."""
+        # CV2 settings for thresholding
+        thresh_settings = cv2.THRESH_BINARY+cv2.THRESH_OTSU
+        ret, thresh = cv2.threshold(self.image, 0, 255, thresh_settings)
+        # First pixel is very likely to be the background color
+        if thresh[0][0] < ret:
+            # If background is darker than foreground, invert black/white
+            thresh = cv2.bitwise_not(thresh)
+        self.image = thresh
+
+    def find_ranges(self):
+        """Identifies ranges (splits) of blank (255) pixels."""
+        pixels = numpy.asarray(self.image)
+        x, y = self.width, self.height
+        empty_rows = []
+        for row in xrange(y):
+            for col in xrange(x):
+                if pixels[row][col] != 255:
                     # Found non-background pixel; row is not blank
                     break
-            elif dimension == "x":
-                if pixels[pixel][line] != 255:
+            else:
+                empty_rows.append(row)
+        empty_cols = []
+        for col in xrange(x):
+            for row in xrange(y):
+                if pixels[row][col] != 255:
                     # Found non-background pixel; column is not blank
                     break
-        else:
-            blanks.append(line)
-    return blanks
+            else:
+                empty_cols.append(col)
+        # Convert row/column numbers into ranges before assigning
+        self.empty_rows = get_split_ranges(empty_rows)
+        self.empty_cols = get_split_ranges(empty_cols)
 
-# TODO: Find a better way to pass the blanks
-def crop_border(image, vert_blanks, horiz_blanks):
-    """Returns a copy of an image with its blank borders removed."""
-    if not (vert_blanks or horiz_blanks):
-        return image.copy()
-    border = []
-    # Check for top, bottom, left, and right borders
-    for section in vert_blanks:
-        if section[0] == 0:
-            border.append(section[1])
-        elif section[1] == image.size[1] - 1:
-            border.append(section[0])
-    for section in horiz_blanks:
-        if section[0] == 0:
-            border.append(section[1])
-        elif section[1] == image.size[0] - 1:
-            border.append(section[0])
-    # Since we processed the vertical blanks first, our order will be
-    #     upper, lower, left, right.
-    # PIL's crop requires a tuple of (left, upper, right, lower).
-    box = (border[2], border[0], border[3], border[1])
-    cropped = image.crop(box)
-    # Call load to ensure original image is left intact
-    cropped.load()
-    return cropped
+    def crop_border(self):
+        """Removes blank borders from the image."""
+        if not (self.empty_rows or self.empty_cols):
+            raise ValueError("No blank ranges found; run find_ranges first.")
+        # If no blank borders are found, cropping means keeping the full image
+        x1, y1 = 0, 0
+        x2 = self.width
+        y2 = self.height
+        # Check for top, bottom, left, and right borders
+        for section in self.empty_rows:
+            if section[0] == 0:
+                y1 = section[1]
+            elif section[1] == self.height - 1:
+                y2 = section[0]
+        for section in self.empty_cols:
+            if section[0] == 0:
+                x1 = section[1]
+            elif section[1] == self.width - 1:
+                x2 = section[0]
+        # Crop by slicing the numpy array
+        self.image = self.image[y1:y2, x1:x2]
+        # Adjust blank rows/columns by top and left borders and update sizes
+        y_diff = y1
+        self.empty_rows = [(s-y_diff, e-y_diff) for s, e in self.empty_rows[1:]]
+        self.height =- y_diff
+        x_diff = x1
+        self.empty_cols = [(s-x_diff, e-x_diff) for s, e in self.empty_cols[1:]]
+        self.width -= x_diff
 
-# TODO: Find a better way to get the blanks than passing them around.
-#        Maybe make a class for the image and store these values as attributes.
 def find_character_size(pixels, vert_blanks, horiz_blanks):
     """Given a cropped image array, returns the estimated character size."""
     if pixels[0][0] == 255:
@@ -80,31 +99,27 @@ def find_character_size(pixels, vert_blanks, horiz_blanks):
 
 
 
-# Size is only in the relevant dimension
-def get_split_ranges(blanks, size):
-    """Given locations of blank pixels, finds their boundaries."""
-    # TODO: Should this raise an error?
+def get_split_ranges(blanks):
+    """Given lists of integers, condense them into ranges."""
     if not blanks:
         return []
     ranges = []
     start = blanks[0]
     end = blanks[0]
-    for loc in blanks[1:]:
-        if (loc != end + 1):
+    for pos in blanks[1:]:
+        if (pos != end + 1):
             ranges.append((start, end))
             # New range encountered, so reset start
-            start = loc
+            start = pos
         # End always moves regardless of whether a match was found
-        end = loc
+        end = pos
     if start != end:
-        # A blank range reaches the end of the image
+        # The last range contained at least one blank
         ranges.append((start, end))
     return ranges
 
-img = Image.open("kizoku_bw.png")
-empty_rows = find_ranges(numpy.asarray(img), img.size, "y")
-empty_cols = find_ranges(numpy.asarray(img), img.size, "x")
-blank_y_ranges = get_split_ranges(empty_rows, img.size[1])
-blank_x_ranges = get_split_ranges(empty_cols, img.size[0])
-cropped = crop_border(img, blank_y_ranges, blank_x_ranges)
-cropped.show()
+img = TextImage("kizoku_bw.png")
+img.threshold()
+img.find_ranges()
+img.crop_border()
+cv2.imshow("Text", img.image)
