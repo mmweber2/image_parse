@@ -3,9 +3,6 @@ from PIL import Image
 from matplotlib import pyplot as plt
 import numpy
 
-# TODO: The current process is to find the blanks, crop the blanks which are
-#     borders, then find the center blanks again, since they will have moved.
-#     This should be made more efficient.
 # TODO: Error checking
 
 class TextImage(object):
@@ -16,28 +13,38 @@ class TextImage(object):
     height = None
     width = None
 
-    def __init__(self, filepath):
-        """Reads in an image as black and white."""
-        self.image = cv2.imread(filepath, 0)
+    def __init__(self, filepath=None, array=None):
+        """Creates a new TextImage from a file or numpy array."""
+        # Check filepath first, and read in an image as black and white
+        if filepath:
+            self.image = cv2.imread(filepath, 0)
+        elif array is not None:
+            self.image = array
+        else:
+            # Make a blank, empty image
+            self.image = numpy.zeros((0), numpy.uint8)
         # Empty rows/columns are not yet identified
         self.empty_rows = []
         self.empty_cols = []
         # shape is in the format (height, width, color_channels)
         self.height = self.image.shape[0]
         self.width = self.image.shape[1]
+        self.threshold()
+        self._set_ranges()
 
     def threshold(self):
         """Converts image to black on white."""
-        # CV2 settings for thresholding
+        # CV2 settings for Otsu's binary thresholding
         thresh_settings = cv2.THRESH_BINARY+cv2.THRESH_OTSU
-        ret, thresh = cv2.threshold(self.image, 0, 255, thresh_settings)
+        # threshold returns the Otsu threshold value and threshed image array
+        t_value, t_image = cv2.threshold(self.image, 0, 255, thresh_settings)
         # First pixel is very likely to be the background color
-        if thresh[0][0] < ret:
+        if t_image[0][0] < t_value:
             # If background is darker than foreground, invert black/white
-            thresh = cv2.bitwise_not(thresh)
-        self.image = thresh
+            t_image = cv2.bitwise_not(t_image)
+        self.image = t_image
 
-    def find_ranges(self):
+    def _set_ranges(self):
         """Identifies ranges (splits) of blank (255) pixels."""
         pixels = numpy.asarray(self.image)
         x, y = self.width, self.height
@@ -64,7 +71,7 @@ class TextImage(object):
     def crop_border(self):
         """Removes blank borders from the image."""
         if not (self.empty_rows or self.empty_cols):
-            raise ValueError("No blank ranges found; run find_ranges first.")
+            raise ValueError("No blank ranges found")
         # If no blank borders are found, cropping means keeping the full image
         x1, y1 = 0, 0
         x2 = self.width
@@ -83,33 +90,29 @@ class TextImage(object):
         # Crop by slicing the numpy array
         self.image = self.image[y1:y2, x1:x2]
         # Adjust blank rows/columns by top and left borders and update sizes
-        y_diff = y1
-        self.empty_rows = [(s-y_diff, e-y_diff) for s, e in self.empty_rows[1:]]
-        self.height =- y_diff
-        x_diff = x1
-        self.empty_cols = [(s-x_diff, e-x_diff) for s, e in self.empty_cols[1:]]
-        self.width -= x_diff
+        self.empty_rows = [(s - y1, e - y1) for s, e in self.empty_rows[1:]]
+        self.height =- y1
+        self.empty_cols = [(s - x1, e - x1) for s, e in self.empty_cols[1:]]
+        self.width -= x1
 
     # TODO: Before doing this, we need to split text into rows
     #       Then, look for horizontal splits between characters
     def find_character_size(self):
         """Given a cropped image array, returns the estimated character size."""
-        if pixels[0][0] == 255:
-            raise ValueError("Image must be border cropped first")
         rows = self.get_text_rows()
         # TODO: Start here
 
-def get_text_rows(image):
+def get_text_rows(img):
     """Splits a TextImage into a list of TextImages based on vertical spaces."""
     text_lines = []
     previous = 0
-    for row in self.empty_rows:
-            # TODO: Crop extra horizontal space from shorter rows
-            # TODO: Make new TextImage objects out of these
-            text_lines.append(self.image[previous:row[0], 0:self.width])
-            # Start from the next non-blank row
-            previous = row[1]
-        return text_lines
+    for row in img.empty_rows:
+        # TODO: Crop extra horizontal space from shorter rows
+        row_array = img.image[previous:row[0], 0:img.width]
+        text_lines.append(TextImage(array=row_array))
+        # Start from the next non-blank row
+        previous = row[1]
+    return text_lines
 
 def get_split_ranges(blanks):
     """Given lists of integers, condense them into ranges."""
@@ -130,13 +133,11 @@ def get_split_ranges(blanks):
         ranges.append((start, end))
     return ranges
 
-img = TextImage("kizoku_bw.png")
-img.threshold()
-img.find_ranges()
+img = TextImage(filepath="kizoku_bw.png")
 img.crop_border()
-rows = img.get_text_rows()
+rows = get_text_rows(img)
 for row in rows:
-    plt.imshow(row)
+    plt.imshow(row.image)
     plt.show()
 # imshow is not working on my installation
 #cv2.imshow("Text", img.image)
