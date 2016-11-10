@@ -1,5 +1,6 @@
 import cv2
 from PIL import Image
+from matplotlib import pyplot as plt
 import numpy
 
 # TODO: The current process is to find the blanks, crop the blanks which are
@@ -89,15 +90,26 @@ class TextImage(object):
         self.empty_cols = [(s-x_diff, e-x_diff) for s, e in self.empty_cols[1:]]
         self.width -= x_diff
 
-def find_character_size(pixels, vert_blanks, horiz_blanks):
-    """Given a cropped image array, returns the estimated character size."""
-    if pixels[0][0] == 255:
-        raise ValueError(
-                "Image must be border cropped before checking character size")
-    # Look for the first vertical and horizontal line that meet from 0, 0
-    # TODO: Get the line breaks and return (x, y) of their lower right corner
+    # TODO: Before doing this, we need to split text into rows
+    #       Then, look for horizontal splits between characters
+    def find_character_size(self):
+        """Given a cropped image array, returns the estimated character size."""
+        if pixels[0][0] == 255:
+            raise ValueError("Image must be border cropped first")
+        rows = self.get_text_rows()
+        # TODO: Start here
 
-
+def get_text_rows(image):
+    """Splits a TextImage into a list of TextImages based on vertical spaces."""
+    text_lines = []
+    previous = 0
+    for row in self.empty_rows:
+            # TODO: Crop extra horizontal space from shorter rows
+            # TODO: Make new TextImage objects out of these
+            text_lines.append(self.image[previous:row[0], 0:self.width])
+            # Start from the next non-blank row
+            previous = row[1]
+        return text_lines
 
 def get_split_ranges(blanks):
     """Given lists of integers, condense them into ranges."""
@@ -122,4 +134,9 @@ img = TextImage("kizoku_bw.png")
 img.threshold()
 img.find_ranges()
 img.crop_border()
-cv2.imshow("Text", img.image)
+rows = img.get_text_rows()
+for row in rows:
+    plt.imshow(row)
+    plt.show()
+# imshow is not working on my installation
+#cv2.imshow("Text", img.image)
