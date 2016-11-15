@@ -99,8 +99,24 @@ class TextImage(object):
     #       Then, look for horizontal splits between characters
     def find_character_size(self):
         """Given a cropped image array, returns the estimated character size."""
-        rows = self.get_text_rows()
         # TODO: Start here
+        rows = get_text_rows(self)
+        chars = []
+        for row in rows:
+            size = row.height
+            print "Estimated size: ", size
+            x_pos = 0
+            while x_pos < row.width:
+                char = TextImage(array=row.image[0:size, x_pos:x_pos + size])
+                # Median value; TODO
+                x_pos += 3 + size
+                chars.append(char)
+        for char in chars:
+            plt.imshow(char.image)
+            plt.show()
+#for row in rows:
+    #plt.imshow(row.image)
+    #plt.show()
 
 def get_text_rows(img):
     """Splits a TextImage into a list of TextImages based on vertical spaces."""
@@ -108,8 +124,14 @@ def get_text_rows(img):
     previous = 0
     for row in img.empty_rows:
         # TODO: Crop extra horizontal space from shorter rows
-        row_array = img.image[previous:row[0], 0:img.width]
-        text_lines.append(TextImage(array=row_array))
+        row_img = TextImage(array=img.image[previous:row[0], 0:img.width])
+        print "Row has empty cols ", row_img.empty_cols
+        # TODO: This is just temporary experimentation
+        # Median horizontal spacing in this row
+        widths = sorted(end - start for start, end in row_img.empty_cols)
+        median = widths[len(widths)/2]
+        print "Median spacing is ", median
+        text_lines.append(row_img)
         # Start from the next non-blank row
         previous = row[1]
     return text_lines
@@ -135,9 +157,8 @@ def get_split_ranges(blanks):
 
 img = TextImage(filepath="kizoku_bw.png")
 img.crop_border()
-rows = get_text_rows(img)
-for row in rows:
-    plt.imshow(row.image)
-    plt.show()
+#plt.imshow(img.image)
+#plt.show()
+img.find_character_size()
 # imshow is not working on my installation
 #cv2.imshow("Text", img.image)
