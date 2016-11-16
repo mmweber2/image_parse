@@ -100,17 +100,37 @@ class TextImage(object):
     def find_character_size(self):
         """Given a cropped image array, returns the estimated character size."""
         # TODO: Start here
+        # Character size looks good, but doesn't work for commas and periods
         rows = get_text_rows(self)
         chars = []
         for row in rows:
             size = row.height
-            print "Estimated size: ", size
             x_pos = 0
+            # TODO: Make this a median value
+            space_size = 3
+            spaces = []
+            # TODO: Make this more efficient than scanning all columns
+            for col_start, col_end in row.empty_cols:
+                if col_start + space_size <= col_end:
+                    # Might be big enough to be a full space
+                    spaces.append((col_start, col_end))
             while x_pos < row.width:
-                char = TextImage(array=row.image[0:size, x_pos:x_pos + size])
-                # Median value; TODO
-                x_pos += 3 + size
-                chars.append(char)
+                for col_start, col_end in spaces:
+                    if (col_start >= x_pos and 
+                        (x_pos + size + space_size >= col_end)):
+                        # There are enough empty columns within this space
+                        #     to suggest that it is more than one character
+                        char_image = row.image[0:size, x_pos:col_start + 1]
+                        chars.append(TextImage(array=char_image))
+                        # Continue searching after this space
+                        x_pos = col_end + 1
+                        break
+                else:
+                    # No large spaces found within the character
+                    char = TextImage(array=row.image[0:size, x_pos:x_pos + size])
+                    x_pos += (3 + size)
+                    chars.append(char)
+        # Testing section
         for char in chars:
             plt.imshow(char.image)
             plt.show()
@@ -125,6 +145,7 @@ def get_text_rows(img):
     for row in img.empty_rows:
         # TODO: Crop extra horizontal space from shorter rows
         row_img = TextImage(array=img.image[previous:row[0], 0:img.width])
+        # TODO: Come back here 
         print "Row has empty cols ", row_img.empty_cols
         # TODO: This is just temporary experimentation
         # Median horizontal spacing in this row
