@@ -2,6 +2,7 @@ import cv2
 from PIL import Image
 from matplotlib import pyplot as plt
 import numpy
+from bisect import bisect_left
 
 # TODO: Error checking
 
@@ -79,14 +80,15 @@ class TextImage(object):
         # Check for top, bottom, left, and right borders
         for section in self.empty_rows:
             if section[0] == 0:
-                y1 = section[1]
+                # Leave an extra pixel on each side
+                y1 = max(0, section[1] - 1)
             elif section[1] == self.height - 1:
-                y2 = section[0]
+                y2 = section[0] + 1
         for section in self.empty_cols:
             if section[0] == 0:
-                x1 = section[1]
+                x1 = max(0, section[1] - 1)
             elif section[1] == self.width - 1:
-                x2 = section[0]
+                x2 = section[0] + 1
         # Crop by slicing the numpy array
         self.image = self.image[y1:y2, x1:x2]
         # Adjust blank rows/columns by top and left borders and update sizes
@@ -95,48 +97,44 @@ class TextImage(object):
         self.empty_cols = [(s - x1, e - x1) for s, e in self.empty_cols[1:]]
         self.width -= x1
 
-    # TODO: Before doing this, we need to split text into rows
-    #       Then, look for horizontal splits between characters
     def find_character_size(self):
         """Given a cropped image array, returns the estimated character size."""
-        # TODO: Start here
-        # Character size looks good, but doesn't work for commas and periods
         rows = get_text_rows(self)
         chars = []
         for row in rows:
             size = row.height
             x_pos = 0
-            # TODO: Make this a median value
-            space_size = 3
-            spaces = []
-            # TODO: Make this more efficient than scanning all columns
-            for col_start, col_end in row.empty_cols:
-                if col_start + space_size <= col_end:
-                    # Might be big enough to be a full space
-                    spaces.append((col_start, col_end))
+            widths = sorted(end - start for start, end in row.empty_cols)
+            # Median horizontal spacing in this row
+            space_size = widths[len(widths)/2]
+            # Get columns that are large enough to be full spaces
+            spaces = [(x, y) for x, y in row.empty_cols if x + space_size <= y]
             while x_pos < row.width:
-                for col_start, col_end in spaces:
-                    if (col_start >= x_pos and 
-                        (x_pos + size + space_size >= col_end)):
-                        # There are enough empty columns within this space
-                        #     to suggest that it is more than one character
-                        char_image = row.image[0:size, x_pos:col_start + 1]
+                # Character's starting position: include one extra pixel
+                c_start = max(0, x_pos - 1) 
+                # TODO: Make this more efficient than scanning all spaces
+                for x1, x2 in spaces:
+                    if (x1 > x_pos) and (x_pos + size + space_size >= x2):
+                        # There are enough empty columns within this space to
+                        #   suggest that it contains more than one character
+                        char_image = row.image[0:size, c_start:x1 + 2]
                         chars.append(TextImage(array=char_image))
                         # Continue searching after this space
-                        x_pos = col_end + 1
+                        x_pos = x2 + 1
                         break
                 else:
+                    print "Got in the else"
                     # No large spaces found within the character
-                    char = TextImage(array=row.image[0:size, x_pos:x_pos + size])
+                    # Include one padding pixel on the right
+                    c_end = x_pos + size + 1
+                    char = TextImage(array=row.image[0:size, c_start:c_end])
                     x_pos += (3 + size)
                     chars.append(char)
         # Testing section
         for char in chars:
             plt.imshow(char.image)
             plt.show()
-#for row in rows:
-    #plt.imshow(row.image)
-    #plt.show()
+        # TODO: This is splitting characters, not finding their size
 
 def get_text_rows(img):
     """Splits a TextImage into a list of TextImages based on vertical spaces."""
@@ -144,14 +142,8 @@ def get_text_rows(img):
     previous = 0
     for row in img.empty_rows:
         # TODO: Crop extra horizontal space from shorter rows
-        row_img = TextImage(array=img.image[previous:row[0], 0:img.width])
-        # TODO: Come back here 
-        print "Row has empty cols ", row_img.empty_cols
-        # TODO: This is just temporary experimentation
-        # Median horizontal spacing in this row
-        widths = sorted(end - start for start, end in row_img.empty_cols)
-        median = widths[len(widths)/2]
-        print "Median spacing is ", median
+        # row is a tuple of (blank_row_start, blank_row_end)
+        row_img = TextImage(array=img.image[previous:row[0] + 1, 0:img.width])
         text_lines.append(row_img)
         # Start from the next non-blank row
         previous = row[1]
@@ -176,7 +168,7 @@ def get_split_ranges(blanks):
         ranges.append((start, end))
     return ranges
 
-img = TextImage(filepath="kizoku_bw.png")
+img = TextImage(filepath="utsubo_bw.png")
 img.crop_border()
 #plt.imshow(img.image)
 #plt.show()
