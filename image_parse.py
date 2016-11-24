@@ -30,6 +30,7 @@ class TextImage(object):
         # shape is in the format (height, width, color_channels)
         self.height = self.image.shape[0]
         self.width = self.image.shape[1]
+        print "Made a new image: width is {} and height is {}".format(self.width, self.height)
         self.threshold()
         self._set_ranges()
 
@@ -39,6 +40,7 @@ class TextImage(object):
         thresh_settings = cv2.THRESH_BINARY+cv2.THRESH_OTSU
         # threshold returns the Otsu threshold value and threshed image array
         t_value, t_image = cv2.threshold(self.image, 0, 255, thresh_settings)
+        #print "After thresholding, t_value is {} and t_image is {}".format(t_value, t_image)
         # First pixel is very likely to be the background color
         if t_image[0][0] < t_value:
             # If background is darker than foreground, invert black/white
@@ -99,9 +101,9 @@ class TextImage(object):
         self.image = self.image[y1:y2, x1:x2]
         # Adjust blank rows/columns by top and left borders and update sizes
         self.empty_rows = [(s - y1, e - y1) for s, e in self.empty_rows[1:]]
-        self.height -= y1
+        self.height = y2 - y1
         self.empty_cols = [(s - x1, e - x1) for s, e in self.empty_cols[1:]]
-        self.width -= x1
+        self.width = x2 - x1
 
     # TODO: Rewrite this method to actually find the size
     def find_character_size(self):
@@ -115,7 +117,6 @@ class TextImage(object):
     def split_characters(row):
         """Given a TextImage row, split it into character TextImages."""
         chars = [row]
-        print "Chars are ", chars
         size = row.height - 2 # Subtract top and bottom padding pixels
         print "Size is ", size
         widths = sorted(end - start for start, end in row.empty_cols)
@@ -143,7 +144,10 @@ class TextImage(object):
                 # Include one padding pixel on the right
                 c_end = x_pos + size + 1
                 # TODO: Handle larger characters
+                print "Image width is ", row.width
+                #print "Sizes of image are"
                 print "Making character from {} to {}".format(c_start, c_end)
+                #print row.image[0:row.height, 359:368]
                 char = TextImage(array=row.image[0:row.height, c_start:c_end])
                 x_pos += (space_size + size - 1)
                 chars.append(char)
