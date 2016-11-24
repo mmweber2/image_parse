@@ -1,3 +1,6 @@
+#!/usr/local/bin/python
+# coding: utf-8
+
 import cv2
 from PIL import Image
 from matplotlib import pyplot as plt
@@ -30,7 +33,6 @@ class TextImage(object):
         # shape is in the format (height, width, color_channels)
         self.height = self.image.shape[0]
         self.width = self.image.shape[1]
-        print "Made a new image: width is {} and height is {}".format(self.width, self.height)
         self.threshold()
         self._set_ranges()
 
@@ -40,7 +42,6 @@ class TextImage(object):
         thresh_settings = cv2.THRESH_BINARY+cv2.THRESH_OTSU
         # threshold returns the Otsu threshold value and threshed image array
         t_value, t_image = cv2.threshold(self.image, 0, 255, thresh_settings)
-        #print "After thresholding, t_value is {} and t_image is {}".format(t_value, t_image)
         # First pixel is very likely to be the background color
         if t_image[0][0] < t_value:
             # If background is darker than foreground, invert black/white
@@ -77,9 +78,6 @@ class TextImage(object):
         # If vertical is False, don't crop on y axis
         if not (self.empty_rows or self.empty_cols):
             raise ValueError("No blank ranges found")
-        if vertical:
-            print self.empty_rows
-        print self.empty_cols
         # If no blank borders are found, cropping means keeping the full image
         x1, y1 = 0, 0
         x2 = self.width
@@ -99,6 +97,7 @@ class TextImage(object):
                 x2 = section[0] + 1
         # Crop by slicing the numpy array
         self.image = self.image[y1:y2, x1:x2]
+        # TODO: This isn't correctly removing blanks at borders when cropping
         # Adjust blank rows/columns by top and left borders and update sizes
         self.empty_rows = [(s - y1, e - y1) for s, e in self.empty_rows[1:]]
         self.height = y2 - y1
@@ -117,42 +116,37 @@ class TextImage(object):
     def split_characters(row):
         """Given a TextImage row, split it into character TextImages."""
         chars = [row]
-        size = row.height - 2 # Subtract top and bottom padding pixels
-        print "Size is ", size
-        widths = sorted(end - start for start, end in row.empty_cols)
+        widths = sorted(e - s for s, e in row.empty_cols if s != e)
+        # TODO: This almost works, but 怪し are not split correctly
         # Median horizontal spacing in this row
-        space_size = widths[len(widths)/2]
+        space_size = widths[len(widths)/2] - 1
+        print "Widths are ", widths
         # Get columns that are large enough to be full spaces
         spaces = [(x, y) for x, y in row.empty_cols if y >= (x + space_size)]
-        x_pos = 0
-        while x_pos < row.width:
-            # Character's starting position: include one extra pixel
-            c_start = max(0, x_pos - 1) 
-            # TODO: Make this more efficient than scanning all spaces
-            for x1, x2 in spaces:
-                if (x1 > x_pos) and (x2 <= (x_pos + size)):
-                    print "Found smaller character at ", x_pos
-                    # There are enough empty columns within this space to
-                    #   suggest that it contains more than one character
-                    char_image = row.image[0:row.height, c_start:x1 + 2]
-                    chars.append(TextImage(array=char_image))
-                    x_pos = x2
-                    break
+        space_index = 0
+        previous_x = 0
+        while True:
+            if space_index >= len(spaces):
+                break
+            c_start = previous_x
+            c_end = spaces[space_index][0] + 2
+            print "Making character from {} to {}".format(c_start, c_end)
+            if c_end - c_start <= row.height + 2:
+                # Small or normal sized character
+                previous_x = spaces[space_index][1] - 1
+                space_index += 1
             else:
-                print "Found a normal character at ", x_pos
-                # No large spaces found within the character
-                # Include one padding pixel on the right
-                c_end = x_pos + size + 1
-                # TODO: Handle larger characters
-                print "Image width is ", row.width
-                #print "Sizes of image are"
+                print "It's too big!"
+                print c_end - c_start
+                # Too big to be a single character; split in half
+                midpoint = (c_start + c_end) / 2
+                previous_x = midpoint
+                c_end = midpoint
                 print "Making character from {} to {}".format(c_start, c_end)
-                #print row.image[0:row.height, 359:368]
-                char = TextImage(array=row.image[0:row.height, c_start:c_end])
-                x_pos += (space_size + size - 1)
-                chars.append(char)
+            char = TextImage(array=row.image[0:row.height, c_start:c_end])
+            chars.append(char)
         # Testing section
-        for char in chars[:3]:
+        for char in chars:
             plt.imshow(char.image)
             plt.show()
 
