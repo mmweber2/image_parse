@@ -97,14 +97,14 @@ class TextImage(object):
                 x2 = section[0] + 1
         # Crop by slicing the numpy array
         self.image = self.image[y1:y2, x1:x2]
-        # TODO: This isn't correctly removing blanks at borders when cropping
         # Adjust blank rows/columns by top and left borders and update sizes
         self.empty_rows = [(s - y1, e - y1) for s, e in self.empty_rows[1:]]
         self.height = y2 - y1
-        self.empty_cols = [(s - x1, e - x1) for s, e in self.empty_cols[1:]]
+        c = [(s - x1, e - x1) for s, e in self.empty_cols[1:] if e <= x2 - x1]
+        self.empty_cols = c
         self.width = x2 - x1
 
-    # TODO: Rewrite this method to actually find the size
+    # TODO: Change to split_characters
     def find_character_size(self):
         """Given a cropped image array, returns the estimated character size."""
         # TODO: For now, just calling this for testing
@@ -123,15 +123,24 @@ class TextImage(object):
         spaces = [(x, y) for x, y in row.empty_cols if y >= (x + space_size)]
         space_index = 0
         previous_x = 0
+        print "Width is ", row.width
+        print "The empty cols are ", row.empty_cols
         while True:
-            if space_index >= len(spaces):
-                break
             c_start = previous_x
-            c_end = spaces[space_index][0] + 2
-            print "Making character from {} to {}".format(c_start, c_end)
+            last_char = False
+            if space_index >= len(spaces):
+                # If this is the last character, it should reach the end of row
+                c_end = row.width
+                print "Found last char"
+                last_char = True
+            else:
+                c_end = spaces[space_index][0] + 2
             if c_end - c_start <= row.height + 2:
                 # Small or normal sized character
-                previous_x = spaces[space_index][1] - 1
+                if not last_char:
+                    previous_x = spaces[space_index][1] - 1
+                    print "This space is ", spaces[space_index]
+                    print "Previous x is now ", previous_x
                 space_index += 1
             else:
                 print "It's too big!"
@@ -143,6 +152,7 @@ class TextImage(object):
                 for gap in row.empty_cols:
                     # Gap occurs after this character
                     if gap[0] > c_end:
+                        print "Breaking, gap is after ", c_end
                         break
                     if c_start <= gap[0] and gap[1]  <= c_end:
                         if gap[1] - gap[0] > max_gap:
@@ -150,9 +160,11 @@ class TextImage(object):
                             midpoint = (gap[1] + gap[0]) / 2
                 previous_x = midpoint
                 c_end = midpoint
-                print "Making character from {} to {}".format(c_start, c_end)
+            print "Making character from {} to {}".format(c_start, c_end)
             char = TextImage(array=row.image[0:row.height, c_start:c_end])
             chars.append(char)
+            if last_char:
+                break
         # Testing section
         for char in chars:
             plt.imshow(char.image)
@@ -191,7 +203,7 @@ def get_split_ranges(blanks):
         ranges.append((start, end))
     return ranges
 
-img = TextImage(filepath="kizoku_bw.png")
+img = TextImage(filepath="sphere_bw.png")
 img.crop_border()
 #plt.imshow(img.image)
 #plt.show()
