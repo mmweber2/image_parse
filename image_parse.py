@@ -117,10 +117,8 @@ class TextImage(object):
         """Given a TextImage row, split it into character TextImages."""
         chars = [row]
         widths = sorted(e - s for s, e in row.empty_cols if s != e)
-        # TODO: This almost works, but 怪し are not split correctly
         # Median horizontal spacing in this row
         space_size = widths[len(widths)/2] - 1
-        print "Widths are ", widths
         # Get columns that are large enough to be full spaces
         spaces = [(x, y) for x, y in row.empty_cols if y >= (x + space_size)]
         space_index = 0
@@ -139,7 +137,17 @@ class TextImage(object):
                 print "It's too big!"
                 print c_end - c_start
                 # Too big to be a single character; split in half
-                midpoint = (c_start + c_end) / 2
+                # Find maximum gap within this range
+                midpoint = 0
+                max_gap = 0
+                for gap in row.empty_cols:
+                    # Gap occurs after this character
+                    if gap[0] > c_end:
+                        break
+                    if c_start <= gap[0] and gap[1]  <= c_end:
+                        if gap[1] - gap[0] > max_gap:
+                            max_gap = gap[1] - gap[0]
+                            midpoint = (gap[1] + gap[0]) / 2
                 previous_x = midpoint
                 c_end = midpoint
                 print "Making character from {} to {}".format(c_start, c_end)
