@@ -5,7 +5,6 @@ import cv2
 from PIL import Image
 from matplotlib import pyplot as plt
 import numpy
-from bisect import bisect_left
 
 # TODO: Error checking
 
@@ -18,7 +17,16 @@ class TextImage(object):
     width = None
 
     def __init__(self, filepath=None, array=None):
-        """Creates a new TextImage from a file or numpy array."""
+        """Creates a new TextImage from a file or numpy array.
+        
+        Args:
+            filepath: string, the relative or absolute path of the file to
+                read in. If not provided, array will be checked instead.
+
+            array: a 2D list corresponding to a numpy image array.
+                This parameter is only checked if filepath is None.
+                If filepath and array are both None, a blank image is created.
+            """
         # Check filepath first, and read in an image as black and white
         if filepath:
             self.image = cv2.imread(filepath, 0)
@@ -37,12 +45,14 @@ class TextImage(object):
         self._set_ranges()
 
     def threshold(self):
-        """Converts image to black on white."""
+        """Converts this TextImage to black on white using Otsu's method."""
         # CV2 settings for Otsu's binary thresholding
         thresh_settings = cv2.THRESH_BINARY+cv2.THRESH_OTSU
         # threshold returns the Otsu threshold value and threshed image array
         t_value, t_image = cv2.threshold(self.image, 0, 255, thresh_settings)
-        # First pixel is very likely to be the background color
+        # First pixel is very likely to be the background color if image
+        #     has not been cropped
+        # TODO: What if the first pixel is not part of the background?
         if t_image[0][0] < t_value:
             # If background is darker than foreground, invert black/white
             t_image = cv2.bitwise_not(t_image)
@@ -73,49 +83,55 @@ class TextImage(object):
         self.empty_cols = get_split_ranges(empty_cols)
 
     # TODO: What happens if the whole image is blank?
-    def crop_border(self, vertical=True):
-        """Removes blank borders from the image."""
-        # If vertical is False, don't crop on y axis
-        if not (self.empty_rows or self.empty_cols):
-            raise ValueError("No blank ranges found")
-        # If no blank borders are found, cropping means keeping the full image
+    def crop_border(self, crop_vertical=True):
+        """Removes blank borders from the image.
+        
+        Args:
+            crop_vertical: boolean, defaults to True. If set to False, 
+                this method will not crop off empty rows.
+                Empty columns  are always cropped in either case.
+        """
+        # If no blank borders are found, will keep the full image
         x1, y1 = 0, 0
         x2 = self.width
         y2 = self.height
         # Check for top, bottom, left, and right borders
-        if vertical:
-            for section in self.empty_rows:
-                if section[0] == 0:
-                    # Leave an extra pixel on each side
-                    y1 = max(0, section[1] - 1)
-                elif section[1] == self.height - 1:
-                    y2 = section[0] + 1
-        for section in self.empty_cols:
-            if section[0] == 0:
-                x1 = max(0, section[1] - 1)
-            elif section[1] == self.width - 1:
-                x2 = section[0] + 1
+        if crop_vertical:
+            for start, stop in self.empty_rows:
+                if start == 0:
+                    # Leave an extra pixel on each side for visibility
+                    y1 = max(0, stop - 1)
+                elif stop == self.height - 1:
+                    y2 = start + 1
+        for start, stop in self.empty_cols:
+            if start == 0:
+                x1 = max(0, stop - 1)
+            elif stop == self.width - 1:
+                x2 = start + 1
         # Crop by slicing the numpy array
         self.image = self.image[y1:y2, x1:x2]
         # Adjust blank rows/columns by top and left borders and update sizes
+        # First blank section will be cropped out, so remove it from the list
         self.empty_rows = [(s - y1, e - y1) for s, e in self.empty_rows[1:]]
         self.height = y2 - y1
+        # Filter out any range ends that are beyond the new size
         c = [(s - x1, e - x1) for s, e in self.empty_cols[1:] if e <= x2 - x1]
         self.empty_cols = c
         self.width = x2 - x1
 
-    # TODO: Change to split_characters
-    def find_character_size(self):
-        """Given a cropped image array, returns the estimated character size."""
-        # TODO: For now, just calling this for testing
-        for row in get_text_rows(self):
-            TextImage.split_characters(row)
-        return 0
-
     @staticmethod
     def split_characters(row):
-        """Given a TextImage row, split it into character TextImages."""
-        chars = [row]
+        """Given a TextImage row, split it into character TextImages.
+        
+        Args:
+            row: TextImage, a single row of text to split into single
+                characters.
+                
+        Returns:
+            A list of TextImage objects of each character in row in the
+                same order.
+        """
+        chrs = []
         widths = sorted(e - s for s, e in row.empty_cols if s != e)
         # Median horizontal spacing in this row
         space_size = widths[len(widths)/2] - 1
@@ -123,52 +139,51 @@ class TextImage(object):
         spaces = [(x, y) for x, y in row.empty_cols if y >= (x + space_size)]
         space_index = 0
         previous_x = 0
-        print "Width is ", row.width
-        print "The empty cols are ", row.empty_cols
         while True:
             c_start = previous_x
+            # Is this the last character in the row?
             last_char = False
-            if space_index >= len(spaces):
+            if space_index >= len(spaces) or c_start >= row.width:
                 # If this is the last character, it should reach the end of row
                 c_end = row.width
-                print "Found last char"
                 last_char = True
             else:
+                # Pad with extra pixels for clarity
                 c_end = spaces[space_index][0] + 2
             if c_end - c_start <= row.height + 2:
                 # Small or normal sized character
                 if not last_char:
                     previous_x = spaces[space_index][1] - 1
-                    print "This space is ", spaces[space_index]
-                    print "Previous x is now ", previous_x
                 space_index += 1
             else:
-                print "It's too big!"
-                print c_end - c_start
-                # Too big to be a single character; split in half
-                # Find maximum gap within this range
-                midpoint = 0
-                max_gap = 0
-                for gap in row.empty_cols:
-                    # Gap occurs after this character
-                    if gap[0] > c_end:
-                        print "Breaking, gap is after ", c_end
-                        break
-                    if c_start <= gap[0] and gap[1]  <= c_end:
-                        if gap[1] - gap[0] > max_gap:
-                            max_gap = gap[1] - gap[0]
-                            midpoint = (gap[1] + gap[0]) / 2
+                # TODO: This character could consist of three or more characters
+                # Too big to be a single character; split into pieces
+                midpoint = TextImage._find_split(c_start, c_end, row.empty_cols)
                 previous_x = midpoint
                 c_end = midpoint
-            print "Making character from {} to {}".format(c_start, c_end)
-            char = TextImage(array=row.image[0:row.height, c_start:c_end])
-            chars.append(char)
+            chrs.append(TextImage(array=row.image[0:row.height, c_start:c_end]))
             if last_char:
                 break
-        # Testing section
-        for char in chars:
-            plt.imshow(char.image)
-            plt.show()
+        return chrs
+
+    @staticmethod
+    def _find_split(chr_start, chr_end, cols):
+        """Returns the location of the largest gap within a character."""
+        # Given start and end indices and a series of blank columns, finds
+        #    the largest split between those indices and returns the middle
+        #    of that split.
+        midpoint = 0
+        max_gap = 0
+        for gap_start, gap_end in cols:
+            # Gap occurs after this character; stop looking
+            if gap_start > chr_end:
+                return midpoint
+            if chr_start < gap_start and gap_end < chr_end:
+                # Gap divides this character
+                if gap_end - gap_start >= max_gap:
+                    max_gap = gap_end - gap_start
+                    midpoint = (gap_start + gap_end) / 2
+        return midpoint
 
 def get_text_rows(img):
     """Splits a TextImage into a list of TextImages based on vertical spaces."""
@@ -178,20 +193,38 @@ def get_text_rows(img):
         # row is a tuple of (blank_row_start, blank_row_end)
         row_img = TextImage(array=img.image[previous:row[0] + 1, 0:img.width])
         # Remove extra horizontal (x axis) space from each row
-        row_img.crop_border(vertical=False)
+        # Don't crop vertically, leave some vertical padding intact
+        row_img.crop_border(crop_vertical=False)
         text_lines.append(row_img)
         # Start from the next non-blank row
         previous = row[1]
     return text_lines
 
-def get_split_ranges(blanks):
-    """Given lists of integers, condense them into ranges."""
-    if not blanks:
+def get_split_ranges(array):
+    """Given a list of integers, condense the numbers into ranges.
+    
+    Args:
+        array: list of distinct integers. In order to find all consecutive
+            number ranges, array must be in sorted order.
+
+            If array contains duplicate values, the ranges will start and end
+            on those values rather than including them and continuing.
+        
+    Returns:
+        A list of two-tuples containing integers indicating the start and end
+            (inclusive) of each consecutive range. If an integer is not part of
+            a consecutive sequence, it will be added as both a start and end
+            value.
+
+        For example, if array is [1, 2, 3, 6, 7, 8, 10], the return value
+            would be [(1, 3), (6, 8), (10, 10)].
+        """
+    if not array:
         return []
     ranges = []
-    start = blanks[0]
-    end = blanks[0]
-    for pos in blanks[1:]:
+    start = array[0]
+    end = array[0]
+    for pos in array[1:]:
         if (pos != end + 1):
             ranges.append((start, end))
             # New range encountered, so reset start
@@ -203,10 +236,16 @@ def get_split_ranges(blanks):
         ranges.append((start, end))
     return ranges
 
-img = TextImage(filepath="sphere_bw.png")
+# Usage: set path to relative or absolute filepath
+path = "Sophie.png"
+img = TextImage(filepath=path)
 img.crop_border()
-#plt.imshow(img.image)
-#plt.show()
-img.find_character_size()
-# imshow is not working on my installation
-#cv2.imshow("Text", img.image)
+plt.imshow(img.image)
+plt.show()
+chars = []
+for row in get_text_rows(img):
+    chars.extend(TextImage.split_characters(row))
+# Testing section
+for char in chars[13:16]:
+    plt.imshow(char.image)
+    plt.show()
