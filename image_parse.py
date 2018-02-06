@@ -11,22 +11,27 @@ import numpy
 class TextImage(object):
     """Represents an image containing text characters."""
     image = None
-    empty_rows = None
-    empty_cols = None
+    empty_rows = []
+    empty_cols = []
     height = None
     width = None
 
     def __init__(self, filepath=None, array=None):
         """Creates a new TextImage from a file or numpy array.
         
+        If filepath is specified, reads in the image from filepath.
+        If filepath is not specified and if array is, reads in the given array.
+        Otherwise, creates a new, empty array.
+        
         Args:
-            filepath: string, the relative or absolute path of the file to
-                read in. If not provided, array will be checked instead.
+            filepath: String, the relative or absolute path of the image file
+                to read in. If not provided, array will be checked instead.
 
             array: a 2D list corresponding to a numpy image array.
                 This parameter is only checked if filepath is None.
                 If filepath and array are both None, a blank image is created.
-            """
+                Defaults to None.
+        """
         # Check filepath first, and read in an image as black and white
         if filepath:
             self.image = cv2.imread(filepath, 0)
@@ -50,13 +55,14 @@ class TextImage(object):
         thresh_settings = cv2.THRESH_BINARY+cv2.THRESH_OTSU
         # threshold returns the Otsu threshold value and threshed image array
         t_value, t_image = cv2.threshold(self.image, 0, 255, thresh_settings)
-        # First pixel is very likely to be the background color if image
-        #     has not been cropped
-        # TODO: What if the first pixel is not part of the background?
-        if t_image[0][0] < t_value:
+        # Check four corners of image; the most common color there is likely
+        # to be the background color
+        corners = (t_img[0][0], t_img[-1][-1], t_img[0][-1], t_img[-1][0])
+        # Get the most common corner pixel (any if tied)
+        if Counter(corners).most_common(1)[0][0] < t_value:
             # If background is darker than foreground, invert black/white
-            t_image = cv2.bitwise_not(t_image)
-        self.image = t_image
+            t_img = cv2.bitwise_not(t_img)
+        self.image = t_img
 
     def _set_ranges(self):
         """Identifies ranges (splits) of blank (255) pixels."""
@@ -78,46 +84,58 @@ class TextImage(object):
                     break
             else:
                 empty_cols.append(col)
-        # Convert row/column numbers into ranges before assigning
+        # The above just notes the individual empty rows and columns,
+        # so convert those numbers into ranges before assigning
         self.empty_rows = get_split_ranges(empty_rows)
         self.empty_cols = get_split_ranges(empty_cols)
 
     # TODO: What happens if the whole image is blank?
-    def crop_border(self, crop_vertical=True):
+    # TODO: Document what if there is no cropping to do
+    # Argument is "full_image" for disambiguation from TextImage.image
+    @staticmethod
+    def crop_border(full_image, crop_vertical=True):
         """Removes blank borders from the image.
         
         Args:
-            crop_vertical: boolean, defaults to True. If set to False, 
-                this method will not crop off empty rows.
-                Empty columns  are always cropped in either case.
+            full_image: TextImage, the image to crop.
+
+            crop_vertical: boolean, whether or not to crop on the y-axis.
+                If set to False, this method can be used to trim empty space
+                from the left and right borders, while leaving vertical spacing
+                intact.
+                Defaults to True.
+
+     Raises:
+            ValueError: empty_rows and empty_cols are both empty for this image.
+                This results from incorrect initialization of the TextImage.
         """
-        # If no blank borders are found, will keep the full image
+        # If no blank borders are found, keep the full image
         x1, y1 = 0, 0
-        x2 = self.width
-        y2 = self.height
+        x2 = full_image.width
+        y2 = full_image.height
         # Check for top, bottom, left, and right borders
         if crop_vertical:
-            for start, stop in self.empty_rows:
+            for start, stop in full_image.empty_rows:
                 if start == 0:
                     # Leave an extra pixel on each side for visibility
                     y1 = max(0, stop - 1)
-                elif stop == self.height - 1:
+                elif stop == full_image.height - 1:
                     y2 = start + 1
-        for start, stop in self.empty_cols:
+        for start, stop in full_image.empty_cols:
             if start == 0:
                 x1 = max(0, stop - 1)
-            elif stop == self.width - 1:
+            elif stop == full_image.width - 1:
                 x2 = start + 1
         # Crop by slicing the numpy array
-        self.image = self.image[y1:y2, x1:x2]
+        full_image.image = full_image.image[y1:y2, x1:x2]
         # Adjust blank rows/columns by top and left borders and update sizes
         # First blank section will be cropped out, so remove it from the list
-        self.empty_rows = [(s - y1, e - y1) for s, e in self.empty_rows[1:]]
-        self.height = y2 - y1
+        full_image.empty_rows = [(s - y1, e - y1) for s, e in full_image.empty_rows[1:]]
+        full_image.height = y2 - y1
         # Filter out any range ends that are beyond the new size
-        c = [(s - x1, e - x1) for s, e in self.empty_cols[1:] if e <= x2 - x1]
-        self.empty_cols = c
-        self.width = x2 - x1
+        c = [(s - x1, e - x1) for s, e in full_image.empty_cols[1:] if e <= x2 - x1]
+        full_image.empty_cols = c
+        full_image.width = x2 - x1
 
     @staticmethod
     def split_characters(row):
@@ -126,6 +144,7 @@ class TextImage(object):
         Args:
             row: TextImage, a single row of text to split into single
                 characters.
+                Use get_text_rows to split an image into these rows.
                 
         Returns:
             A list of TextImage objects of each character in row in the
