@@ -4,6 +4,7 @@
 import cv2
 from PIL import Image
 from matplotlib import pyplot as plt
+from collections import Counter
 import numpy
 
 # TODO: Error checking
