@@ -54,7 +54,7 @@ class TextImage(object):
         # CV2 settings for Otsu's binary thresholding
         thresh_settings = cv2.THRESH_BINARY+cv2.THRESH_OTSU
         # threshold returns the Otsu threshold value and threshed image array
-        t_value, t_image = cv2.threshold(self.image, 0, 255, thresh_settings)
+        t_value, t_img = cv2.threshold(self.image, 0, 255, thresh_settings)
         # Check four corners of image; the most common color there is likely
         # to be the background color
         corners = (t_img[0][0], t_img[-1][-1], t_img[0][-1], t_img[-1][0])
