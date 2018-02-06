@@ -40,7 +40,7 @@ class TextImage(object):
             self.image = array
         else:
             # Make a blank, empty image
-            self.image = numpy.zeros((0), numpy.uint8)
+            self.image = numpy.zeros((1, 1), numpy.uint8)
         # Empty rows/columns are not yet identified
         self.empty_rows = []
         self.empty_cols = []
@@ -220,7 +220,7 @@ def get_text_rows(img):
         row_img = TextImage(array=img.image[previous:row[0] + 1, 0:img.width])
         # Remove extra horizontal (x axis) space from each row
         # Don't crop vertically, leave some vertical padding intact
-        row_img.crop_border(crop_vertical=False)
+        TextImage.crop_border(row_img, crop_vertical=False)
         text_lines.append(row_img)
         # Start from the next non-blank row
         previous = row[1]
@@ -264,14 +264,14 @@ def get_split_ranges(array):
 
 # Usage: set path to relative or absolute filepath
 path = "Sophie.png"
-img = TextImage(filepath=path)
-img.crop_border()
-plt.imshow(img.image)
-plt.show()
-chars = []
-for row in get_text_rows(img):
-    chars.extend(TextImage.split_characters(row))
+#img = TextImage(filepath=path)
+#TextImage.crop_border(img)
+#plt.imshow(img.image)
+#plt.show()
+#chars = []
+#for row in get_text_rows(img):
+#    chars.extend(TextImage.split_characters(row))
 # Testing section
-for char in chars[13:20]:
-    plt.imshow(char.image)
-    plt.show()
+#for char in chars[13:20]:
+#    plt.imshow(char.image)
+#    plt.show()
