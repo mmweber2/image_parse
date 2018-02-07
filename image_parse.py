@@ -35,13 +35,17 @@ class TextImage(object):
         """
         # Check filepath first, and read in an image as black and white
         if filepath:
-            self.image = cv2.imread(filepath, 0)
+            # imread returns None for an invalid file
+            parsed_image = cv2.imread(filepath, 0) 
+            # May return an array, so cannot use 'if parsed_image'
+            if parsed_image is None:
+                raise ValueError("Invalid filepath: {}".format(filepath))
+            self.image = parsed_image
         elif array is not None:
             self.image = array
         else:
             # Make a blank, empty image
             self.image = numpy.full((1, 1), 255, numpy.uint8)
-        print self.image
         # Empty rows/columns are not yet identified
         self.empty_rows = []
         self.empty_cols = []
