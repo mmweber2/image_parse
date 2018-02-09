@@ -7,8 +7,6 @@ from matplotlib import pyplot as plt
 from collections import Counter
 import numpy
 
-# TODO: Error checking
-
 class TextImage(object):
     """Represents an image containing text characters."""
     image = None
@@ -41,6 +39,7 @@ class TextImage(object):
             self.image = parsed_image
         else:
             # Make a blank, empty image
+            print "Making a blank image"
             self.image = numpy.full((1, 1), 255, numpy.uint8)
         # Empty rows/columns are not yet identified
         self.empty_rows = []
@@ -61,8 +60,9 @@ class TextImage(object):
         # to be the background color
         corners = (t_img[0][0], t_img[-1][-1], t_img[0][-1], t_img[-1][0])
         # Get the most common corner pixel (any if tied)
-        if Counter(corners).most_common(1)[0][0] < t_value:
-            # If background is darker than foreground, invert black/white
+        if Counter(corners).most_common(1)[0][0] <= t_value:
+            # If background is darker than the threshold value, invert black/white
+            # In cases where the Otsu technique was not needed, t_value will be 0.
             t_img = cv2.bitwise_not(t_img)
         self.image = t_img
 
