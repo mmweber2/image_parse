@@ -39,7 +39,6 @@ class TextImage(object):
             self.image = parsed_image
         else:
             # Make a blank, empty image
-            print "Making a blank image"
             self.image = numpy.full((1, 1), 255, numpy.uint8)
         # Empty rows/columns are not yet identified
         self.empty_rows = []
@@ -268,17 +267,3 @@ def get_split_ranges(array):
         # The last range contained at least one blank
         ranges.append((start, end))
     return ranges
-
-# Usage: set path to relative or absolute filepath
-path = "Sophie.png"
-#img = TextImage(filepath=path)
-#TextImage.crop_border(img)
-#plt.imshow(img.image)
-#plt.show()
-#chars = []
-#for row in get_text_rows(img):
-#    chars.extend(TextImage.split_characters(row))
-# Testing section
-#for char in chars[13:20]:
-#    plt.imshow(char.image)
-#    plt.show()
