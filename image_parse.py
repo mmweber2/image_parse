@@ -17,21 +17,19 @@ class TextImage(object):
     height = None
     width = None
 
-    def __init__(self, filepath=None, array=None):
-        """Creates a new TextImage from a file or numpy array.
+    def __init__(self, filepath=None):
+        """Creates a new TextImage from a file.
         
         If filepath is specified, reads in the image from filepath.
-        If filepath is not specified and if array is, reads in the given array.
         Otherwise, creates a new, empty array.
         
         Args:
             filepath: String, the relative or absolute path of the image file
-                to read in. If not provided, array will be checked instead.
+                to read in.
 
-            array: a 2D list corresponding to a numpy image array.
-                This parameter is only checked if filepath is None.
-                If filepath and array are both None, a blank image is created.
-                Defaults to None.
+        Raises:
+            ValueError: A filepath is provided, but it does not point
+                to a valid image.
         """
         # Check filepath first, and read in an image as black and white
         if filepath:
@@ -41,8 +39,6 @@ class TextImage(object):
             if parsed_image is None:
                 raise ValueError("Invalid filepath: {}".format(filepath))
             self.image = parsed_image
-        elif array is not None:
-            self.image = array
         else:
             # Make a blank, empty image
             self.image = numpy.full((1, 1), 255, numpy.uint8)
