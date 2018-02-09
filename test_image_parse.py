@@ -23,6 +23,12 @@ def test_constructor_filepath_valid_image():
     assert img is not None
     assert len(img.image)
 
+def test_constructor_filepath_bw_inverted_image():
+    path = "./screenshots/utsubo_bw2.png"
+    img = image_parse.TextImage(path)
+    assert img is not None
+    assert len(img.image)
+
 def test_constructor_filepath_non_image():
     path = "./screenshots/cat.txt"
     assert_raises(ValueError, image_parse.TextImage, path)
