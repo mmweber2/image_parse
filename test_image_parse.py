@@ -23,18 +23,6 @@ def test_constructor_filepath_valid_image():
     assert img is not None
     assert len(img.image)
 
-sample_array = [[105, 105, 103, 105, 103, 105],
-                [105, 106, 107, 109, 109, 107],
-                [107, 107, 107, 109, 110, 107],
-                [107, 107, 105, 107, 109, 105],
-                [107, 109, 112, 112, 110, 107],
-                [111, 111, 110, 111,  93, 118]]
-
-sample_array2 = [[255, 255, 255, 255, 255, 255],
-                [255, 255, 255, 0, 0, 255],
-                [255, 255, 255, 0, 0, 255],
-                [255, 255, 255, 255, 0, 255],
-                [255, 0, 0, 0, 0, 255],
-                [0, 0, 0, 0, 255, 0]]
-
-sample_np_array = numpy.array(sample_array2)
+def test_constructor_filepath_non_image():
+    path = "./screenshots/cat.txt"
+    assert_raises(ValueError, image_parse.TextImage, path)
