@@ -71,12 +71,20 @@ def test_crop_border_already_cropped():
     orig_height, orig_width = img.height, img.width
     orig_rows, orig_cols = img.empty_rows, img.empty_cols
     image_parse.TextImage.crop_border(img)
-    #cv2.imwrite("./screenshots/crop_test.png", img.image)
     # A cropped image shouldn't be cropped further
     assert_equals(img.height, orig_height)
     assert_equals(img.width, orig_width)
     assert_equals(img.empty_rows, orig_rows)
     assert_equals(img.empty_cols, orig_cols)
 
-# TODO:
-#   Crop empty image
+def test_crop_border_blank_image():
+    path = "./screenshots/blank_image.png"
+    img = image_parse.TextImage(path)
+    orig_height, orig_width = img.height, img.width
+    orig_rows, orig_cols = img.empty_rows, img.empty_cols
+    image_parse.TextImage.crop_border(img)
+    # A blank image doesn't have anything to crop
+    assert_equals(img.height, orig_height)
+    assert_equals(img.width, orig_width)
+    assert_equals(img.empty_rows, orig_rows)
+    assert_equals(img.empty_cols, orig_cols)
