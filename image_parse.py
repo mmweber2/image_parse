@@ -155,6 +155,9 @@ class TextImage(object):
         Returns:
             A list of TextImage objects of each character in row in the
                 same order.
+
+        Raises:
+            IndexError: No spaces between characters were found.
         """
         chrs = []
         widths = sorted(e - s for s, e in row.empty_cols if s != e)
@@ -192,7 +195,9 @@ class TextImage(object):
                     c_end = gap
                     if c_end - c_start <= row.height + 2:
                         new_chrs.append(row.image[0:row.height, c_start:c_end])
-            chrs.extend(TextImage(array=character) for character in new_chrs)
+            for character in new_chrs:
+                cv2.imwrite("temp_chr.png", character)
+                chrs.append(cv2.imread("temp_chr.png", 0))
             if last_char:
                 break
         return chrs
