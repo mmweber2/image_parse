@@ -6,6 +6,7 @@ from StringIO import StringIO
 from nose.tools import assert_raises
 from nose.tools import assert_less
 from nose.tools import assert_not_equal
+from nose.tools import assert_equals
 
 def test_constructor_empty():
     test = image_parse.TextImage()
@@ -50,7 +51,19 @@ def test_crop_border_no_space_vertical_true():
     assert_not_equal(img.empty_rows, orig_rows)
     assert_not_equal(img.empty_cols, orig_cols)
 
+def test_crop_border_no_space_vertical_false():
+    path = "./screenshots/utsubo_bw.png"
+    img = image_parse.TextImage(path)
+    orig_height, orig_width = img.height, img.width
+    orig_rows, orig_cols = img.empty_rows, img.empty_cols
+    image_parse.TextImage.crop_border(img, crop_vertical=False)
+    # Vertical values should be unchanged
+    assert_equals(img.height, orig_height)
+    assert_equals(img.empty_rows, orig_rows)
+    # Horizontal values should be changed
+    assert_less(img.width, orig_width)
+    assert_not_equal(img.empty_cols, orig_cols)
+
 # TODO:
-#   Crop with vertical=False
 #   Crop when already cropped
 #   Crop empty image
