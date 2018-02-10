@@ -88,15 +88,14 @@ class TextImage(object):
         if len(empty_rows) == 1 and len(empty_cols) == 1:
             # Single empty rows and columns; most likely with a blank image
             # Match formatting of get_split_ranges
-            self.empty_rows = (empty_rows[0], empty_rows[0])
-            self.empty_cols = (empty_cols[0], empty_cols[0])
+            self.empty_rows = [(empty_rows[0], empty_rows[0])]
+            self.empty_cols = [(empty_cols[0], empty_cols[0])]
             return
         # Otherwise, the above just notes the individual empty rows and columns,
         # so convert those numbers into ranges before assigning
         self.empty_rows = get_split_ranges(empty_rows)
         self.empty_cols = get_split_ranges(empty_cols)
 
-    # TODO: What happens if the whole image is blank?
     # Argument is "full_image" for disambiguation from TextImage.image
     @staticmethod
     def crop_border(full_image, crop_vertical=True):
