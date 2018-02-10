@@ -136,9 +136,10 @@ class TextImage(object):
         # Crop by slicing the numpy array
         full_image.image = full_image.image[y1:y2, x1:x2]
         # Adjust blank rows/columns by top and left borders and update sizes
-        # First blank section will be cropped out, so remove it from the list
-        full_image.empty_rows = [(s - y1, e - y1) for s, e in full_image.empty_rows[1:]]
-        full_image.height = y2 - y1
+        if crop_vertical:
+            rows = [(s - y1, e - y1) for s, e in full_image.empty_rows]
+            full_image.empty_rows = rows
+            full_image.height = y2 - y1
         # Filter out any range ends that are beyond the new size
         c = [(s - x1, e - x1) for s, e in full_image.empty_cols[1:] if e <= x2 - x1]
         full_image.empty_cols = c
