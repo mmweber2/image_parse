@@ -97,7 +97,6 @@ class TextImage(object):
         self.empty_cols = get_split_ranges(empty_cols)
 
     # TODO: What happens if the whole image is blank?
-    # TODO: Document what if there is no cropping to do
     # Argument is "full_image" for disambiguation from TextImage.image
     @staticmethod
     def crop_border(full_image, crop_vertical=True):
@@ -137,11 +136,11 @@ class TextImage(object):
         full_image.image = full_image.image[y1:y2, x1:x2]
         # Adjust blank rows/columns by top and left borders and update sizes
         if crop_vertical:
-            rows = [(s - y1, e - y1) for s, e in full_image.empty_rows]
+            rows = [(max(s, y1), e) for s, e in full_image.empty_rows]
             full_image.empty_rows = rows
             full_image.height = y2 - y1
         # Filter out any range ends that are beyond the new size
-        c = [(s - x1, e - x1) for s, e in full_image.empty_cols[1:] if e <= x2 - x1]
+        c = [(s - x1, e - x1) for s, e in full_image.empty_cols if e <= x2 - x1]
         full_image.empty_cols = c
         full_image.width = x2 - x1
 
