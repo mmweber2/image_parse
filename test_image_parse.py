@@ -63,7 +63,20 @@ def test_crop_border_no_space_vertical_false():
     # Horizontal values should be changed
     assert_less(img.width, orig_width)
     assert_not_equal(img.empty_cols, orig_cols)
+    #cv2.imwrite("./screenshots/crop_test.png", img.image)
+
+def test_crop_border_already_cropped():
+    path = "./screenshots/utsubo_bw_cropped.png"
+    img = image_parse.TextImage(path)
+    orig_height, orig_width = img.height, img.width
+    orig_rows, orig_cols = img.empty_rows, img.empty_cols
+    image_parse.TextImage.crop_border(img)
+    #cv2.imwrite("./screenshots/crop_test.png", img.image)
+    # A cropped image shouldn't be cropped further
+    assert_equals(img.height, orig_height)
+    assert_equals(img.width, orig_width)
+    assert_equals(img.empty_rows, orig_rows)
+    assert_equals(img.empty_cols, orig_cols)
 
 # TODO:
-#   Crop when already cropped
 #   Crop empty image
