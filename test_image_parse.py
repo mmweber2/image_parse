@@ -88,3 +88,20 @@ def test_crop_border_blank_image():
     assert_equals(img.width, orig_width)
     assert_equals(img.empty_rows, orig_rows)
     assert_equals(img.empty_cols, orig_cols)
+
+def test_split_characters_split_row():
+    pass
+
+def test_split_characters_not_in_row():
+    pass
+
+def test_split_characters_blank_image():
+    path = "./screenshots/blank_image.png"
+    img = image_parse.TextImage(path)
+    assert_raises(IndexError, image_parse.TextImage.split_characters, img)
+
+def test_split_characters_split_row():
+    pass
+
+def test_split_characters_single_character():
+    pass
