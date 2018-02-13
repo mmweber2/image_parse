@@ -41,7 +41,7 @@ class TextImage(object):
             if parsed_image is None:
                 raise ValueError("Invalid filepath: {}".format(filepath))
             self.image = parsed_image
-        elif array is not None:
+        elif array is not None and len(array) > 0:
             self.image = array
         else:
             # Make a blank, empty image
@@ -199,12 +199,15 @@ class TextImage(object):
                 while c_end - c_start > row.height + 2:
                     # Still too big; try splitting
                     gap = TextImage._find_split(c_start, c_end, row.empty_cols)
+                    if not gap:
+                        # Couldn't find any splits in this section
+                        new_chrs.append(row.image[0:row.height, c_start:c_end])
+                        break
                     previous_x = gap
                     c_end = gap
                     if c_end - c_start <= row.height + 2:
                         new_chrs.append(row.image[0:row.height, c_start:c_end])
             for character in new_chrs:
-                print "Running characters"
                 chrs.append(TextImage(array=character))
             if last_char:
                 break
