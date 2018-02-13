@@ -15,15 +15,18 @@ class TextImage(object):
     height = None
     width = None
 
-    def __init__(self, filepath=None):
-        """Creates a new TextImage from a file.
+    def __init__(self, filepath=None, array=None):
+        """Creates a new TextImage from a file or numpy array.
         
         If filepath is specified, reads in the image from filepath.
+        If array is specified, makes a TextImage out of the array.
         Otherwise, creates a new, empty array.
         
         Args:
             filepath: String, the relative or absolute path of the image file
-                to read in.
+                to read in. If not provided, array will be checked instead.
+            array: numpy array representing another TextImage object.
+                This argument is only checked if filepath is None.
 
         Raises:
             ValueError: A filepath is provided, but it does not point
@@ -37,9 +40,24 @@ class TextImage(object):
             if parsed_image is None:
                 raise ValueError("Invalid filepath: {}".format(filepath))
             self.image = parsed_image
+        elif array is not None:
+            self.image = array
         else:
             # Make a blank, empty image
             self.image = numpy.full((1, 1), 255, numpy.uint8)
+        # Empty rows/columns are not yet identified
+        self.empty_rows = []
+        self.empty_cols = []
+        # shape is in the format (height, width, color_channels)
+        self.height = self.image.shape[0]
+        self.width = self.image.shape[1]
+        self.threshold()
+        self._set_ranges()
+
+    @staticmethod
+    def _split_image(old_image, col_start, col_end):
+        """Splits an existing TextImage into smaller ones."""
+        self.image = old_image.image[::, col_start:col_end]
         # Empty rows/columns are not yet identified
         self.empty_rows = []
         self.empty_cols = []
@@ -182,6 +200,7 @@ class TextImage(object):
                 c_end = spaces[space_index][0] + 2
             if c_end - c_start <= row.height + 2:
                 # Small or normal sized character
+                # Add a tuple of start, end for each dimension
                 new_chrs.append(row.image[0:row.height, c_start:c_end])
                 if not last_char:
                     previous_x = spaces[space_index][1] - 1
@@ -196,8 +215,8 @@ class TextImage(object):
                     if c_end - c_start <= row.height + 2:
                         new_chrs.append(row.image[0:row.height, c_start:c_end])
             for character in new_chrs:
-                cv2.imwrite("temp_chr.png", character)
-                chrs.append(cv2.imread("temp_chr.png", 0))
+                print "Running characters"
+                chrs.append(TextImage(array=character))
             if last_char:
                 break
         return chrs
