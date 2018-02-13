@@ -25,7 +25,8 @@ class TextImage(object):
         Args:
             filepath: String, the relative or absolute path of the image file
                 to read in. If not provided, array will be checked instead.
-            array: numpy array representing another TextImage object.
+            array: numpy array representing a portion of another
+                TextImage object.
                 This argument is only checked if filepath is None.
 
         Raises:
@@ -36,7 +37,7 @@ class TextImage(object):
         if filepath:
             # imread returns None for an invalid file
             parsed_image = cv2.imread(filepath, 0) 
-            # May return an array, so cannot use 'if parsed_image'
+            # May return an array of 0s, so cannot use 'if parsed_image'
             if parsed_image is None:
                 raise ValueError("Invalid filepath: {}".format(filepath))
             self.image = parsed_image
@@ -45,19 +46,7 @@ class TextImage(object):
         else:
             # Make a blank, empty image
             self.image = numpy.full((1, 1), 255, numpy.uint8)
-        # Empty rows/columns are not yet identified
-        self.empty_rows = []
-        self.empty_cols = []
-        # shape is in the format (height, width, color_channels)
-        self.height = self.image.shape[0]
-        self.width = self.image.shape[1]
-        self.threshold()
-        self._set_ranges()
-
-    @staticmethod
-    def _split_image(old_image, col_start, col_end):
-        """Splits an existing TextImage into smaller ones."""
-        self.image = old_image.image[::, col_start:col_end]
+        assert self.image is not None
         # Empty rows/columns are not yet identified
         self.empty_rows = []
         self.empty_cols = []
