@@ -119,10 +119,11 @@ def test_find_split_single_split():
     assert_equals(0, image_parse.TextImage._find_split(0, 100, [(120, 150)]))
 
 def test_find_split_multiple_tied_splits():
-    assert_equals(0, image_parse.TextImage._find_split(0, 200, [(50, 100), (100, 150)]))
+    # Chooses the first in case of ties
+    assert_equals(75, image_parse.TextImage._find_split(0, 200, [(50, 100), (100, 150)]))
 
 def test_find_split_multiple_different_sizes():
-    pass
+    assert_equals(80, image_parse.TextImage._find_split(0, 200, [(50, 110), (100, 150)]))
 
 def test_find_split_against_range_start():
     pass
