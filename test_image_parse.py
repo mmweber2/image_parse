@@ -89,39 +89,48 @@ def test_crop_border_blank_image():
     assert_equals(img.empty_rows, orig_rows)
     assert_equals(img.empty_cols, orig_cols)
 
-def test_split_characters_split_row():
+def test_split_row_valid_row():
     path = "./screenshots/utsubo_bw_cropped.png"
     img = image_parse.TextImage(path)
-    result = image_parse.TextImage.split_characters(img)
+    result = image_parse.TextImage.split_row(img)
     assert len(result) > 1
 
-def test_split_characters_not_in_row():
+def test_split_row_not_a_row():
     path = "./screenshots/123816.jpg"
     img = image_parse.TextImage(path)
     # Should return some images, but they are probably not characters
-    assert image_parse.TextImage.split_characters(img)
+    assert image_parse.TextImage.split_row(img)
 
-def test_split_characters_blank_image():
+def test_split_row_blank_image():
     path = "./screenshots/blank_image.png"
     img = image_parse.TextImage(path)
-    assert_raises(IndexError, image_parse.TextImage.split_characters, img)
+    assert_raises(IndexError, image_parse.TextImage.split_row, img)
 
-def test_split_characters_single_character():
+def test_split_row_single_character():
     path = "./screenshots/temp_chr.jpg"
     img = image_parse.TextImage(path)
-    assert image_parse.TextImage.split_characters(img)
+    assert image_parse.TextImage.split_row(img)
 
-def test_split_characters_not_textimage():
-    assert_raises(AttributeError, image_parse.TextImage.split_characters, "")
+def test_split_row_not_textimage():
+    assert_raises(AttributeError, image_parse.TextImage.split_row, "")
 
 # _find_split input format: area start, area end, columns (start,end tuples)
 def test_find_split_single_split():
     assert_equals(0, image_parse.TextImage._find_split(0, 100, [(120, 150)]))
 
 def test_find_split_multiple_tied_splits():
-    pass
+    assert_equals(0, image_parse.TextImage._find_split(0, 200, [(50, 100), (100, 150)]))
 
 def test_find_split_multiple_different_sizes():
+    pass
+
+def test_find_split_against_range_start():
+    pass
+
+def test_find_split_against_range_end():
+    pass
+
+def test_find_split_against_range_end_and_start():
     pass
 
 def test_find_split_no_splits():

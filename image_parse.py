@@ -151,7 +151,7 @@ class TextImage(object):
 		full_image.width = x2 - x1
 
 	@staticmethod
-	def split_characters(row):
+	def split_row(row):
 		"""Given a TextImage row, split it into character TextImages.
 
 		Args:
