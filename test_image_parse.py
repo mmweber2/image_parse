@@ -114,5 +114,21 @@ def test_split_characters_single_character():
 def test_split_characters_not_textimage():
     assert_raises(AttributeError, image_parse.TextImage.split_characters, "")
 
+# _find_split input format: area start, area end, columns (start,end tuples)
+def test_find_split_single_split():
+    pass
+
+def test_find_split_multiple_tied_splits():
+    pass
+
+def test_find_split_multiple_different_sizes():
+    pass
+
+def test_find_split_no_splits():
+    pass
+
+def test_find_split_none_in_range():
+    assert_equals(0, image_parse.TextImage._find_split(0, 100, [(120, 150)]))
+
 
 # TODO: Add tests for threshold; it breaks when used on an image made from [].
