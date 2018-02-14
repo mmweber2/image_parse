@@ -175,8 +175,6 @@ class TextImage(object):
         space_index = 0
         previous_x = 0
         while True:
-            # Characters added this iteration
-            new_chrs = []
             c_start = previous_x
             # Is this the last character in the row?
             last_char = False
@@ -189,29 +187,26 @@ class TextImage(object):
                 c_end = spaces[space_index][0] + 2
             if c_end - c_start <= row.height + 2:
                 # Small or normal sized character
-                # Add a tuple of start, end for each dimension
-                new_chrs.append(row.image[0:row.height, c_start:c_end])
+                chrs.append(row.image[0:row.height, c_start:c_end])
                 if not last_char:
                     previous_x = spaces[space_index][1] - 1
                 space_index += 1
             else:
                 # Too big to be a single character; split into pieces
                 while c_end - c_start > row.height + 2:
-                    # Still too big; try splitting
                     gap = TextImage._find_split(c_start, c_end, row.empty_cols)
                     if not gap:
                         # Couldn't find any splits in this section
-                        new_chrs.append(row.image[0:row.height, c_start:c_end])
+                        chrs.append(row.image[0:row.height, c_start:c_end])
                         break
                     previous_x = gap
                     c_end = gap
                     if c_end - c_start <= row.height + 2:
-                        new_chrs.append(row.image[0:row.height, c_start:c_end])
-            for character in new_chrs:
-                chrs.append(TextImage(array=character))
+                        chrs.append(row.image[0:row.height, c_start:c_end])
             if last_char:
                 break
-        return chrs
+        # Make TextImages out of the sliced array portions
+        return [TextImage(array=c) for c in chrs]
 
     @staticmethod
     def _find_split(chr_start, chr_end, cols):
