@@ -199,18 +199,18 @@ class TextImage(object):
 		# Make TextImages out of the sliced array portions
 		return [TextImage(array=c) for c in chrs]
 
-	def _split_character(char, c_start, c_end):
+	def _split_character(self, c_start, c_end):
 		"""Split a single large character into smaller images, if possible."""
 		new_chars = []
-		while c_end - c_start > char.height + 2:
-			gap = TextImage._find_split(c_start, c_end, char.empty_cols)
+		while c_end - c_start > self.height + 2:
+			gap = TextImage._find_split(c_start, c_end, self.empty_cols)
 			if not gap:
 				# Couldn't find any splits in this section; add it as is
-				new_chars.append(char.image[0:char.height, c_start:c_end])
+				new_chars.append(self.image[0:self.height, c_start:c_end])
 				break
 			c_end = gap
-			if c_end - c_start <= char.height + 2:
-				new_chars.append(char.image[0:char.height, c_start:c_end])
+			if c_end - c_start <= self.height + 2:
+				new_chars.append(self.image[0:self.height, c_start:c_end])
 			c_start = gap # Next character starts where this left off
 		return (c_end, new_chars)
 
