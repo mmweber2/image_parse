@@ -90,18 +90,29 @@ def test_crop_border_blank_image():
     assert_equals(img.empty_cols, orig_cols)
 
 def test_split_characters_split_row():
-    pass
+    path = "./screenshots/utsubo_bw_cropped.png"
+    img = image_parse.TextImage(path)
+    result = image_parse.TextImage.split_characters(img)
+    assert len(result) > 1
 
 def test_split_characters_not_in_row():
-    pass
+    path = "./screenshots/123816.jpg"
+    img = image_parse.TextImage(path)
+    # Should return some images, but they are probably not characters
+    assert image_parse.TextImage.split_characters(img)
 
 def test_split_characters_blank_image():
     path = "./screenshots/blank_image.png"
     img = image_parse.TextImage(path)
     assert_raises(IndexError, image_parse.TextImage.split_characters, img)
 
-def test_split_characters_split_row():
-    pass
-
 def test_split_characters_single_character():
-    pass
+    path = "./screenshots/temp_chr.jpg"
+    img = image_parse.TextImage(path)
+    assert image_parse.TextImage.split_characters(img)
+
+def test_split_characters_not_textimage():
+    assert_raises(AttributeError, image_parse.TextImage.split_characters, "")
+
+
+# TODO: Add tests for threshold; it breaks when used on an image made from [].
