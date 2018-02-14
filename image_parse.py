@@ -100,8 +100,8 @@ class TextImage(object):
 			return
 		# Otherwise, the above just notes the individual empty rows and columns,
 		# so convert those numbers into ranges before assigning
-		self.empty_rows = get_split_ranges(empty_rows)
-		self.empty_cols = get_split_ranges(empty_cols)
+		self.empty_rows = TextImage.get_split_ranges(empty_rows)
+		self.empty_cols = TextImage.get_split_ranges(empty_cols)
 
 	# Argument is "full_image" for disambiguation from TextImage.image
 	@staticmethod
@@ -199,7 +199,6 @@ class TextImage(object):
 		# Make TextImages out of the sliced array portions
 		return [TextImage(array=c) for c in chrs]
 
-	@staticmethod
 	def _split_character(char, c_start, c_end):
 		"""Split a single large character into smaller images, if possible."""
 		new_chars = []
@@ -236,53 +235,55 @@ class TextImage(object):
 		# Returns 0 when no splits are found
 		return midpoint
 
-def get_text_rows(img):
-	"""Splits a TextImage into a list of TextImages based on vertical spaces."""
-	text_lines = []
-	previous = 0
-	for row in img.empty_rows:
-		# row is a tuple of (blank_row_start, blank_row_end)
-		row_img = TextImage(array=img.image[previous:row[0] + 1, 0:img.width])
-		# Remove extra horizontal (x axis) space from each row
-		# Don't crop vertically, leave some vertical padding intact
-		TextImage.crop_border(row_img, crop_vertical=False)
-		text_lines.append(row_img)
-		# Start from the next non-blank row
-		previous = row[1]
-	return text_lines
+	@staticmethod
+	def get_text_rows(img):
+		"""Splits a TextImage into a list of TextImages based on vertical spaces."""
+		text_lines = []
+		previous = 0
+		for row in img.empty_rows:
+			# row is a tuple of (blank_row_start, blank_row_end)
+			row_img = TextImage(array=img.image[previous:row[0] + 1, 0:img.width])
+			# Remove extra horizontal (x axis) space from each row
+			# Don't crop vertically, leave some vertical padding intact
+			TextImage.crop_border(row_img, crop_vertical=False)
+			text_lines.append(row_img)
+			# Start from the next non-blank row
+			previous = row[1]
+		return text_lines
 
-def get_split_ranges(array):
-	"""Given a list of integers, condense the numbers into ranges.
+	@staticmethod
+	def get_split_ranges(array):
+		"""Given a list of integers, condense the numbers into ranges.
 
-	Args:
-		array: list of distinct integers. In order to find all consecutive
-			number ranges, array must be in sorted order.
+		Args:
+			array: list of distinct integers. In order to find all consecutive
+				number ranges, array must be in sorted order.
 
-			If array contains duplicate values, the ranges will start and end
-			on those values rather than including them and continuing.
+				If array contains duplicate values, the ranges will start and end
+				on those values rather than including them and continuing.
 
-	Returns:
-		A list of two-tuples containing integers indicating the start and end
-			(inclusive) of each consecutive range. If an integer is not part of
-			a consecutive sequence, it will be added as both a start and end
-			value.
+		Returns:
+			A list of two-tuples containing integers indicating the start and end
+				(inclusive) of each consecutive range. If an integer is not part of
+				a consecutive sequence, it will be added as both a start and end
+				value.
 
-		For example, if array is [1, 2, 3, 6, 7, 8, 10], the return value
-			would be [(1, 3), (6, 8), (10, 10)].
-		"""
-	if not array:
-		return []
-	ranges = []
-	start = array[0]
-	end = array[0]
-	for pos in array[1:]:
-		if (pos != end + 1):
+			For example, if array is [1, 2, 3, 6, 7, 8, 10], the return value
+				would be [(1, 3), (6, 8), (10, 10)].
+			"""
+		if not array:
+			return []
+		ranges = []
+		start = array[0]
+		end = array[0]
+		for pos in array[1:]:
+			if (pos != end + 1):
+				ranges.append((start, end))
+				# New range encountered, so reset start
+				start = pos
+			# End always moves regardless of whether a match was found
+			end = pos
+		if start != end:
+			# The last range contained at least one blank
 			ranges.append((start, end))
-			# New range encountered, so reset start
-			start = pos
-		# End always moves regardless of whether a match was found
-		end = pos
-	if start != end:
-		# The last range contained at least one blank
-		ranges.append((start, end))
-	return ranges
+		return ranges
